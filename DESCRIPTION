@@ -43,7 +43,8 @@ Imports:
     rio,
     Rcpp,
     RcppEigen,
-    DT
+    DT,
+    MsCoreUtils
 Suggests: 
     knitr,
     rmarkdown,
@@ -54,6 +55,5 @@ LinkingTo:
     Rcpp,
     RcppEigen
 VignetteBuilder: knitr
-
 
 
