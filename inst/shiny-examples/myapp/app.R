@@ -65,7 +65,7 @@ ui <- fluidPage(
                                         <p><h3>The Robust Summarization algorithm</h3><br>
                                                Robust summarization algorithm determines protein intensity using a peptide-based weighted median approach. 
                                                The aim is to obtain protein intensities reflecting closely the protein abundance variation. 
-                                               No normalization is associated.<br>
+                                               No normalization is associated. Abundances are logged.<br>
                                                For more information, see this <a href=https://pubmed.ncbi.nlm.nih.gov/26906401/>article</a>
                                                from Goeminne and al.:<br>
                                                <a href='https://pubs.acs.org/doi/10.1021/pr501223t'>Summarization vs Peptide-Based Models in Label-Free Quantitative Proteomics: 
@@ -341,7 +341,7 @@ ui <- fluidPage(
                                                                     radioButtons("wLFQ_pg", "",
                                                                                  choices = c("Use fast MaxLFQ from iq package (log2 transformed)" = "iq",
                                                                                              "Use MaxLFQ from diann package" = "diann",
-                                                                                             "Use Robust Summarization" = "robust"),
+                                                                                             "Use Robust Summarization  (log2 transformed)" = "robust"),
                                                                                  selected = "robust",
                                                                                  inline = TRUE),
                                                                     fluidRow(column(3, checkboxInput("onlycountall_pg", "Only keep peptides counts all", TRUE)),
