@@ -26,7 +26,7 @@ Go to Rstudio. Install DIAgui from github:
 if(!requireNamespace("devtools", quietly = TRUE)){
    install.packages("devtools") 
 }
-devtools::install_github("marseille-proteomique/DIAgui")
+devtools::install_github("LSMBO/DIAgui_RobustSummarization")
 ```
 
 You can now load it and run the app with this commands: 
