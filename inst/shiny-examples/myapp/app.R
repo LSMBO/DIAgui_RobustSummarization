@@ -13,8 +13,6 @@ library(Rcpp)
 library(RcppEigen)
 library(iq)
 library(MsCoreUtils)
-
-
 #increase the max request size for uploading files
 options(shiny.maxRequestSize = 10000*1024^2)
 #set options for the spinner when things are loading
@@ -113,6 +111,7 @@ ui <- fluidPage(
 
                                                                     htmlOutput("reportdata_check_text"),
                                                                     DT::dataTableOutput("reportdata_check_tab"),
+                                                                    tags$hr(),
 
                                                                     conditionalPanel(condition = "output.reportdata_check",
                                                                                      tags$hr(),
@@ -344,10 +343,12 @@ ui <- fluidPage(
                                                                                              "Use Robust Summarization  (log2 transformed)" = "robust"),
                                                                                  selected = "robust",
                                                                                  inline = TRUE),
-                                                                    fluidRow(column(3, checkboxInput("onlycountall_pg", "Only keep peptides counts all", TRUE)),
-                                                                             column(3, checkboxInput("protypiconly_pg", "Proteotypic only", TRUE)),
-                                                                             column(3, checkboxInput("Top3_pg", "Get Top3 quantification", TRUE)),
-                                                                             column(3, checkboxInput("iBAQ_pg", "Get iBAQ quantification", TRUE))
+                                                                    fluidRow(column(4, checkboxInput("onlycountall_pg", "Only keep peptides counts all", TRUE)),
+                                                                             column(4, checkboxInput("protypiconly_pg", "Proteotypic only", TRUE)),
+                                                                             column(4, checkboxInput("uniqueonly_pg", "Unique only", FALSE))
+                                                                             ),
+                                                                    fluidRow(column(6, checkboxInput("Top3_pg", "Get Top3 quantification", TRUE)),
+                                                                             column(6, checkboxInput("iBAQ_pg", "Get iBAQ quantification", TRUE))
                                                                              ),
                                                                     conditionalPanel(condition = "input.iBAQ_pg",
                                                                                      fluidRow(column(4, checkboxInput("fasta_pg", "Import your FASTA files; if not, search on swissprot.", TRUE),
@@ -954,6 +955,19 @@ server <- function(input, output, session){
       shinyjs::enable("protypiconly_pg")
     }
   })
+
+  # Exclusion mutuelle entre Proteotypic et Unique
+  observeEvent(input$uniqueonly_pg, {
+    if(input$uniqueonly_pg){
+      updateCheckboxInput(session, "protypiconly_pg", value = FALSE)
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$protypiconly_pg, {
+    if(input$protypiconly_pg){
+      updateCheckboxInput(session, "uniqueonly_pg", value = FALSE)
+    }
+  }, ignoreInit = TRUE)
 
   ### REPORT FILE
   pth <- str_split(WD, "/")[[1]]
@@ -1874,6 +1888,48 @@ server <- function(input, output, session){
       brut <- df
       if(input$protypiconly_pg | input$wLFQ_pg == "robust"){
         df <- df[which(df[["Proteotypic"]] != 0), ]
+      }
+      if(input$uniqueonly_pg){
+        # ===== NEW METHOD INSPIRED BY PROSTAR =====
+        # This method:
+        # 1. Builds a peptide-protein adjacency matrix (like DAPAR::BuildAdjacencyMatrix)
+        # 2. Determines uniqueness by counting the number of proteins per peptide
+        # 3. Adds a "Unique" column with 1 or 0
+        # 4. Saves a debug TSV file: data_with_unique_col.tsv
+        # 5. Filters to keep only precursors with Unique=1
+        
+        cat("\n========================================\n")
+        cat("DEBUG: Unique peptide filter activated!\n")
+        cat("Working directory:", getwd(), "\n")
+        cat("Input rows:", nrow(df), "\n")
+        cat("========================================\n")
+        
+        tryCatch({
+          showNotification("Determining unique peptides (Prostar method)...", 
+                          type = "message", duration = 3)
+          
+          df <- ApplyUniquePeptidesFilter(df, apply_filter = TRUE)
+          
+          cat("DEBUG: After filtering, rows =", nrow(df), "\n")
+          
+          # Check that data remains after filtering
+          if(nrow(df) == 0){
+            message("<span style='color:red;'>Unique peptide filtering returned an empty dataframe. 
+                    All precursors are shared between multiple proteins.</span>")
+            showNotification("No unique peptides found!", type = "error", duration = 10)
+            return(NULL)
+          }
+          
+          showNotification(paste0("Filtering complete: ", nrow(df), " unique precursors retained"), 
+                          type = "message", duration = 5)
+          
+        }, error = function(e) {
+          cat("DEBUG ERROR:", e$message, "\n")
+          message(paste0("<span style='color:red;'>Error during unique peptide filtering: ", 
+                        e$message, "</span>"))
+          showNotification(paste0("Error: ", e$message), type = "error", duration = 10)
+          return(NULL)
+        })
       }
       df <- df %>% dplyr::filter(Q.Value <= input$qv_pg & PG.Q.Value <= input$qvpg_pg & Protein.Q.Value <= input$qvprot_pg & GG.Q.Value <= input$qvgg_pg)
 
